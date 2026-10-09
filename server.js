@@ -65,6 +65,7 @@ app.get('/api/telemetry/history', async (req, res) => {
 });
 
 // 4. CSV Export Endpoint: Generates a downloadable CSV spreadsheet
+// 4. CSV Export Endpoint: Splits Date and Time in Africa/Nairobi (EAT, UTC+3)
 app.get('/api/telemetry/export-csv', async (req, res) => {
   try {
     const docs = await db.find({}).sort({ timestamp: 1 });
@@ -73,14 +74,16 @@ app.get('/api/telemetry/export-csv', async (req, res) => {
 
     docs.forEach(row => {
       const dt = new Date(row.timestamp);
-      const dateStr = dt.toISOString().split('T')[0];
-      const timeStr = dt.toTimeString().split(' ')[0];
+
+      // Force conversion to Nairobi time zone (EAT)
+      const dateStr = dt.toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' }); // Formats as YYYY-MM-DD
+      const timeStr = dt.toLocaleTimeString('en-GB', { timeZone: 'Africa/Nairobi', hour12: false }); // Formats as HH:MM:SS
 
       csv += `"${dateStr}","${timeStr}",${row.nh3},${row.ch4},${row.rssi},${row.snr}\r\n`;
     });
 
     res.header('Content-Type', 'text/csv');
-    res.attachment(`latrine_gas_telemetry_${Date.now()}.csv`);
+    res.attachment(`latrine_gas_telemetry_EAT_${Date.now()}.csv`);
     return res.send(csv);
   } catch (err) {
     res.status(500).send('Error generating CSV export');
