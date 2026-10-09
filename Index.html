@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart CB Toilet System</title>
+  
+  <!-- ========================================================
+       EXTERNAL CDN ASSETS
+       1. Google Fonts: 'Plus Jakarta Sans' (UI) & 'JetBrains Mono' (Readings)
+       2. Chart.js: Used for drawing real-time responsive line graphs
+       ======================================================== -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- ========================================================
+       CSS STYLING (Dark Theme Dashboard)
+       ======================================================== -->
+  <style>
+    /* CSS Variables for unified color accents and theme */
+    :root {
+      --bg-main: #0a0d14;            /* Deep dark background */
+      --bg-card: #121824;            /* Surface color for cards */
+      --bg-card-hover: #172030;      /* Card hover state */
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --accent-cyan: #00f2fe;        /* Color for Ammonia (NH3) */
+      --accent-orange: #ff9900;      /* Color for Methane (CH4) */
+      --accent-red: #ff4757;         /* Hazard status */
+      --accent-green: #2ed573;       /* Safe / Online status */
+      --text-primary: #f1f2f6;       /* Main white/light text */
+      --text-secondary: #8b9bb4;     /* Subtitle and muted text */
+      --font-sans: 'Plus Jakarta Sans', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    /* Reset default browser margins */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+    }
+
+    /* Header styling (Title and live status indicator) */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border-subtle);
+      margin-bottom: 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand .logo-orb {
+      width: 14px;
+      height: 14px;
+      background: var(--accent-cyan);
+      border-radius: 50%;
+      box-shadow: 0 0 16px var(--accent-cyan);
+    }
+
+    .brand h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .brand p {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    /* Pulsing online badge in header */
+    .system-status {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      font-family: var(--font-mono);
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(46, 213, 115, 0.1);
+      color: var(--accent-green);
+      border: 1px solid rgba(46, 213, 115, 0.25);
+    }
+
+    .status-pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse 1.8s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    /* Grid for the 4 Telemetry Value Cards */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 18px;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .card:hover {
+      border-color: rgba(255, 255, 255, 0.18);
+      transform: translateY(-2px);
+    }
+
+    .card-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card-value {
+      font-size: 2.2rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .card-value .unit {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      font-family: var(--font-sans);
+      font-weight: 500;
+    }
+
+    .card-footer {
+      margin-top: 12px;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Warning/Hazard badge styles */
+    .badge {
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
+    .badge-safe { background: rgba(46, 213, 115, 0.15); color: var(--accent-green); }
+    .badge-warn { background: rgba(255, 153, 0, 0.15); color: var(--accent-orange); }
+    .badge-danger { background: rgba(255, 71, 87, 0.15); color: var(--accent-red); }
+
+    /* Grid for the 2 large time-series charts */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+      gap: 18px;
+      flex: 1;
+    }
+
+    .chart-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      min-height: 340px;
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .chart-title {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .chart-subtitle {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    .chart-container {
+      position: relative;
+      flex: 1;
+      width: 100%;
+    }
+
+    /* Bottom footer */
+    footer {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-subtle);
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========================================================
+       TOP NAVIGATION BAR
+       Displays system branding and gateway status
+       ======================================================== -->
+  <header>
+    <div class="brand">
+      <div class="logo-orb"></div>
+      <div>
+        <h1>Smart Pit Latrine Gas Monitor</h1>
+        <p>Heltec SX1262 LoRa 32 V3 &bull; Cloud Dashboard</p>
+      </div>
+    </div>
+    <div class="system-status">
+      <div class="status-badge">
+        <span class="status-pulse"></span>
+        <span id="gatewayStatus">GATEWAY LIVE</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================================
+       TELEMETRY KPI CARDS (MQ137, MQ4, RSSI, SNR)
+       ======================================================== -->
+  <section class="metrics-grid">
+    <!-- Card 1: MQ137 Ammonia (NH3) -->
+    <div class="card">
+      <div class="card-label">
+        <span>Ammonia (NH3) &bull; MQ-137</span>
+        <span id="nh3Badge" class="badge badge-safe">SAFE</span>
+      </div>
+      <div class="card-value">
+        <span id="nh3Val">0.0</span>
+        <span class="unit">PPM</span>
+      </div>
+      <div class="card-footer">
+        <span>Threshold: &lt; 25.0 ppm</span>
+        <span id="nh3Peak">Peak: 0.0</span>
+      </div>
+    </div>
+
+    <!-- Card 2: MQ4 Methane (CH4) -->
+    <div class="card">
+      <div class="card-label">
+        <span>Methane (CH4) &bull; MQ-4</span>
+        <span id="ch4Badge" class="badge badge-safe">SAFE</span>
+      </div>
+      <div class="card-value">
+        <span id="ch4Val">0.0</span>
+        <span class="unit">PPM</span>
+      </div>
+      <div class="card-footer">
+        <span>Threshold: &lt; 1000 ppm</span>
+        <span id="ch4Peak">Peak: 0.0</span>
+      </div>
+    </div>
+
+    <!-- Card 3: LoRa Link RSSI (Signal Strength) -->
+    <div class="card">
+      <div class="card-label">
+        <span>LoRa Link RSSI</span>
+        <span class="badge badge-safe">868 MHz</span>
+      </div>
+      <div class="card-value">
+        <span id="rssiVal">-00.0</span>
+        <span class="unit">dBm</span>
+      </div>
+      <div class="card-footer">
+        <span>RF Link Margin</span>
+        <span id="rssiQuality">Optimal</span>
+      </div>
+    </div>
+
+    <!-- Card 4: LoRa Link SNR (Signal-to-Noise Ratio) -->
+    <div class="card">
+      <div class="card-label">
+        <span>LoRa Link SNR</span>
+        <span class="badge badge-safe">SX1262</span>
+      </div>
+      <div class="card-value">
+        <span id="snrVal">+0.0</span>
+        <span class="unit">dB</span>
+      </div>
+      <div class="card-footer">
+        <span>Noise Level</span>
+        <span id="snrStatus">Clear</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       REAL-TIME TIME-SERIES GRAPHS (Chart.js)
+       ======================================================== -->
+  <section class="charts-grid">
+    <!-- Graph 1: Ammonia Trends -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <h2 class="chart-title">Ammonia (NH3) Concentration History</h2>
+          <p class="chart-subtitle">Real-time rolling history (PPM vs Time)</p>
+        </div>
+      </div>
+      <div class="chart-container">
+        <!-- Canvas element where Chart.js renders the NH3 graph -->
+        <canvas id="nh3Chart"></canvas>
+      </div>
+    </div>
+
+    <!-- Graph 2: Methane Trends -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <h2 class="chart-title">Methane (CH4) Concentration History</h2>
+          <p class="chart-subtitle">Real-time rolling history (PPM vs Time)</p>
+        </div>
+      </div>
+      <div class="chart-container">
+        <!-- Canvas element where Chart.js renders the CH4 graph -->
+        <canvas id="ch4Chart"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       FOOTER
+       ======================================================== -->
+  <footer>
+    <span>Payload: <code>NH3:%.2f,CH4:%.2f</code></span>
+    <span id="lastUpdated">Awaiting first sync...</span>
+  </footer>
+
+  <!-- ========================================================
+       JAVASCRIPT LOGIC
+       ======================================================== -->
+  <script>
+    // Maximum number of data points visible on the chart at one time
+    const MAX_POINTS = 20;
+
+    // Variables to track peak values
+    let nh3Peak = 0;
+    let ch4Peak = 0;
+
+    // Shared styling configuration for both charts (Dark theme, axes, tooltip)
+    const commonChartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#172030',
+          borderColor: 'rgba(255, 255, 255, 0.1)',
+          borderWidth: 1,
+          titleFont: { family: 'Plus Jakarta Sans', size: 12 },
+          bodyFont: { family: 'JetBrains Mono', size: 13 }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255, 255, 255, 0.04)' },
+          ticks: { color: '#8b9bb4', font: { family: 'JetBrains Mono', size: 10 } }
+        },
+        y: {
+          grid: { color: 'rgba(255, 255, 255, 0.05)' },
+          ticks: { color: '#8b9bb4', font: { family: 'JetBrains Mono', size: 10 } },
+          beginAtZero: true
+        }
+      },
+      animation: { duration: 400 }
+    };
+
+    // ----------------------------------------------------
+    // INITIALIZE AMMONIA (NH3) CHART
+    // ----------------------------------------------------
+    const nh3Ctx = document.getElementById('nh3Chart').getContext('2d');
+    const nh3Gradient = nh3Ctx.createLinearGradient(0, 0, 0, 300);
+    nh3Gradient.addColorStop(0, 'rgba(0, 242, 254, 0.35)');
+    nh3Gradient.addColorStop(1, 'rgba(0, 242, 254, 0.0)');
+
+    const nh3Chart = new Chart(nh3Ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          data: [],
+          borderColor: '#00f2fe',
+          backgroundColor: nh3Gradient,
+          fill: true,
+          tension: 0.35,
+          borderWidth: 2,
+          pointRadius: 3,
+          pointBackgroundColor: '#00f2fe'
+        }]
+      },
+      options: commonChartOptions
+    });
+
+    // ----------------------------------------------------
+    // INITIALIZE METHANE (CH4) CHART
+    // ----------------------------------------------------
+    const ch4Ctx = document.getElementById('ch4Chart').getContext('2d');
+    const ch4Gradient = ch4Ctx.createLinearGradient(0, 0, 0, 300);
+    ch4Gradient.addColorStop(0, 'rgba(255, 153, 0, 0.35)');
+    ch4Gradient.addColorStop(1, 'rgba(255, 153, 0, 0.0)');
+
+    const ch4Chart = new Chart(ch4Ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          data: [],
+          borderColor: '#ff9900',
+          backgroundColor: ch4Gradient,
+          fill: true,
+          tension: 0.35,
+          borderWidth: 2,
+          pointRadius: 3,
+          pointBackgroundColor: '#ff9900'
+        }]
+      },
+      options: commonChartOptions
+    });
+
+    // ----------------------------------------------------
+    // FUNCTION TO UPDATE DASHBOARD VALUES AND CHARTS
+    // ----------------------------------------------------
+    function updateDashboard(data) {
+      const now = new Date().toLocaleTimeString();
+
+      // 1. Update text displays for metrics
+      document.getElementById('nh3Val').innerText = data.nh3.toFixed(1);
+      document.getElementById('ch4Val').innerText = data.ch4.toFixed(1);
+      document.getElementById('rssiVal').innerText = data.rssi.toFixed(1);
+      document.getElementById('snrVal').innerText = (data.snr > 0 ? '+' : '') + data.snr.toFixed(1);
+
+      // 2. Compute peak values
+      if (data.nh3 > nh3Peak) {
+        nh3Peak = data.nh3;
+        document.getElementById('nh3Peak').innerText = `Peak: ${nh3Peak.toFixed(1)}`;
+      }
+      if (data.ch4 > ch4Peak) {
+        ch4Peak = data.ch4;
+        document.getElementById('ch4Peak').innerText = `Peak: ${ch4Peak.toFixed(1)}`;
+      }
+
+      // 3. Dynamic Threshold Warnings for Ammonia
+      const nh3Badge = document.getElementById('nh3Badge');
+      if (data.nh3 > 25.0) {
+        nh3Badge.className = 'badge badge-danger';
+        nh3Badge.innerText = 'HAZARD';
+      } else if (data.nh3 > 15.0) {
+        nh3Badge.className = 'badge badge-warn';
+        nh3Badge.innerText = 'WARNING';
+      } else {
+        nh3Badge.className = 'badge badge-safe';
+        nh3Badge.innerText = 'SAFE';
+      }
+
+      // 4. Dynamic Threshold Warnings for Methane
+      const ch4Badge = document.getElementById('ch4Badge');
+      if (data.ch4 > 1000.0) {
+        ch4Badge.className = 'badge badge-danger';
+        ch4Badge.innerText = 'CRITICAL';
+      } else if (data.ch4 > 500.0) {
+        ch4Badge.className = 'badge badge-warn';
+        ch4Badge.innerText = 'ELEVATED';
+      } else {
+        ch4Badge.className = 'badge badge-safe';
+        ch4Badge.innerText = 'SAFE';
+      }
+
+      // 5. Append new points to both line charts
+      appendDataPoint(nh3Chart, now, data.nh3);
+      appendDataPoint(ch4Chart, now, data.ch4);
+
+      // 6. Update bottom timestamp
+      document.getElementById('lastUpdated').innerText = `Last updated: ${now}`;
+    }
+
+    // Function to add a point to a Chart.js instance and slide window
+    function appendDataPoint(chart, label, value) {
+      chart.data.labels.push(label);
+      chart.data.datasets[0].data.push(value);
+
+      // Shift off old data points to keep the chart rolling cleanly
+      if (chart.data.labels.length > MAX_POINTS) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+      }
+      chart.update();
+    }
+
+    // ----------------------------------------------------
+    // PREVIEW / SIMULATION LOOP
+    // Generates realistic fluctuating values every 3 seconds
+    // (When connecting to real ESP32 backend later, replace this with fetch())
+    // ----------------------------------------------------
+    setInterval(() => {
+      const mockTelemetry = {
+        nh3: +(8.0 + Math.random() * 8.5).toFixed(2),
+        ch4: +(220.0 + Math.random() * 80.0).toFixed(2),
+        rssi: +(-75.0 - Math.random() * 12.0).toFixed(1),
+        snr: +(7.5 + Math.random() * 2.0).toFixed(1)
+      };
+      updateDashboard(mockTelemetry);
+    }, 3000);
+  </script>
+</body>
+</html>
