@@ -5,37 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Smart CB Toilet System</title>
   
-  <!-- ========================================================
-       EXTERNAL CDN ASSETS
-       1. Google Fonts: 'Plus Jakarta Sans' (UI) & 'JetBrains Mono' (Readings)
-       2. Chart.js: Used for drawing real-time responsive line graphs
-       ======================================================== -->
+  <!-- Fonts & Chart.js CDN -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <!-- ========================================================
-       CSS STYLING (Dark Theme Dashboard)
-       ======================================================== -->
   <style>
-    /* CSS Variables for unified color accents and theme */
     :root {
-      --bg-main: #0a0d14;            /* Deep dark background */
-      --bg-card: #121824;            /* Surface color for cards */
-      --bg-card-hover: #172030;      /* Card hover state */
+      --bg-main: #0a0d14;
+      --bg-card: #121824;
+      --bg-card-hover: #172030;
       --border-subtle: rgba(255, 255, 255, 0.08);
-      --accent-cyan: #00f2fe;        /* Color for Ammonia (NH3) */
-      --accent-orange: #ff9900;      /* Color for Methane (CH4) */
-      --accent-red: #ff4757;         /* Hazard status */
-      --accent-green: #2ed573;       /* Safe / Online status */
-      --text-primary: #f1f2f6;       /* Main white/light text */
-      --text-secondary: #8b9bb4;     /* Subtitle and muted text */
+      --accent-cyan: #00f2fe;
+      --accent-orange: #ff9900;
+      --accent-red: #ff4757;
+      --accent-green: #2ed573;
+      --text-primary: #f1f2f6;
+      --text-secondary: #8b9bb4;
       --font-sans: 'Plus Jakarta Sans', sans-serif;
       --font-mono: 'JetBrains Mono', monospace;
     }
 
-    /* Reset default browser margins */
     * {
       box-sizing: border-box;
       margin: 0;
@@ -52,7 +43,7 @@
       padding: 24px;
     }
 
-    /* Header styling (Title and live status indicator) */
+    /* Top Navigation */
     header {
       display: flex;
       justify-content: space-between;
@@ -87,11 +78,33 @@
       color: var(--text-secondary);
     }
 
-    /* Pulsing online badge in header */
     .system-status {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 12px;
+    }
+
+    /* Export CSV Button */
+    .export-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--accent-cyan);
+      background: rgba(0, 242, 254, 0.1);
+      border: 1px solid rgba(0, 242, 254, 0.3);
+      padding: 6px 14px;
+      border-radius: 999px;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .export-btn:hover {
+      background: rgba(0, 242, 254, 0.2);
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 10px rgba(0, 242, 254, 0.3);
     }
 
     .status-badge {
@@ -121,7 +134,7 @@
       100% { opacity: 1; transform: scale(1); }
     }
 
-    /* Grid for the 4 Telemetry Value Cards */
+    /* Telemetry KPI Cards */
     .metrics-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -180,7 +193,6 @@
       align-items: center;
     }
 
-    /* Warning/Hazard badge styles */
     .badge {
       padding: 3px 8px;
       border-radius: 6px;
@@ -192,7 +204,7 @@
     .badge-warn { background: rgba(255, 153, 0, 0.15); color: var(--accent-orange); }
     .badge-danger { background: rgba(255, 71, 87, 0.15); color: var(--accent-red); }
 
-    /* Grid for the 2 large time-series charts */
+    /* Time-Series Charts Grid */
     .charts-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
@@ -233,7 +245,6 @@
       width: 100%;
     }
 
-    /* Bottom footer */
     footer {
       margin-top: 24px;
       padding-top: 16px;
@@ -248,10 +259,7 @@
 </head>
 <body>
 
-  <!-- ========================================================
-       TOP NAVIGATION BAR
-       Displays system branding and gateway status
-       ======================================================== -->
+  <!-- Top Bar -->
   <header>
     <div class="brand">
       <div class="logo-orb"></div>
@@ -261,6 +269,16 @@
       </div>
     </div>
     <div class="system-status">
+      <!-- Download CSV Link -->
+      <a href="/api/telemetry/export-csv" class="export-btn" title="Download Excel/CSV Log">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        Export CSV
+      </a>
+
       <div class="status-badge">
         <span class="status-pulse"></span>
         <span id="gatewayStatus">GATEWAY LIVE</span>
@@ -268,11 +286,8 @@
     </div>
   </header>
 
-  <!-- ========================================================
-       TELEMETRY KPI CARDS (MQ137, MQ4, RSSI, SNR)
-       ======================================================== -->
+  <!-- Metric KPI Cards -->
   <section class="metrics-grid">
-    <!-- Card 1: MQ137 Ammonia (NH3) -->
     <div class="card">
       <div class="card-label">
         <span>Ammonia (NH3) &bull; MQ-137</span>
@@ -288,7 +303,6 @@
       </div>
     </div>
 
-    <!-- Card 2: MQ4 Methane (CH4) -->
     <div class="card">
       <div class="card-label">
         <span>Methane (CH4) &bull; MQ-4</span>
@@ -304,7 +318,6 @@
       </div>
     </div>
 
-    <!-- Card 3: LoRa Link RSSI (Signal Strength) -->
     <div class="card">
       <div class="card-label">
         <span>LoRa Link RSSI</span>
@@ -320,7 +333,6 @@
       </div>
     </div>
 
-    <!-- Card 4: LoRa Link SNR (Signal-to-Noise Ratio) -->
     <div class="card">
       <div class="card-label">
         <span>LoRa Link SNR</span>
@@ -331,17 +343,14 @@
         <span class="unit">dB</span>
       </div>
       <div class="card-footer">
-        <span>Noise Level</span>
+        <span>Noise Margin</span>
         <span id="snrStatus">Clear</span>
       </div>
     </div>
   </section>
 
-  <!-- ========================================================
-       REAL-TIME TIME-SERIES GRAPHS (Chart.js)
-       ======================================================== -->
+  <!-- Real-Time Charts -->
   <section class="charts-grid">
-    <!-- Graph 1: Ammonia Trends -->
     <div class="chart-card">
       <div class="chart-header">
         <div>
@@ -350,12 +359,10 @@
         </div>
       </div>
       <div class="chart-container">
-        <!-- Canvas element where Chart.js renders the NH3 graph -->
         <canvas id="nh3Chart"></canvas>
       </div>
     </div>
 
-    <!-- Graph 2: Methane Trends -->
     <div class="chart-card">
       <div class="chart-header">
         <div>
@@ -364,32 +371,23 @@
         </div>
       </div>
       <div class="chart-container">
-        <!-- Canvas element where Chart.js renders the CH4 graph -->
         <canvas id="ch4Chart"></canvas>
       </div>
     </div>
   </section>
 
-  <!-- ========================================================
-       FOOTER
-       ======================================================== -->
+  <!-- Footer -->
   <footer>
     <span>Payload: <code>NH3:%.2f,CH4:%.2f</code></span>
     <span id="lastUpdated">Awaiting first sync...</span>
   </footer>
 
-  <!-- ========================================================
-       JAVASCRIPT LOGIC
-       ======================================================== -->
+  <!-- Dashboard JavaScript -->
   <script>
-    // Maximum number of data points visible on the chart at one time
-    const MAX_POINTS = 20;
-
-    // Variables to track peak values
+    const MAX_POINTS = 25;
     let nh3Peak = 0;
     let ch4Peak = 0;
 
-    // Shared styling configuration for both charts (Dark theme, axes, tooltip)
     const commonChartOptions = {
       responsive: true,
       maintainAspectRatio: false,
@@ -414,12 +412,10 @@
           beginAtZero: true
         }
       },
-      animation: { duration: 400 }
+      animation: { duration: 300 }
     };
 
-    // ----------------------------------------------------
-    // INITIALIZE AMMONIA (NH3) CHART
-    // ----------------------------------------------------
+    // NH3 Chart
     const nh3Ctx = document.getElementById('nh3Chart').getContext('2d');
     const nh3Gradient = nh3Ctx.createLinearGradient(0, 0, 0, 300);
     nh3Gradient.addColorStop(0, 'rgba(0, 242, 254, 0.35)');
@@ -443,9 +439,7 @@
       options: commonChartOptions
     });
 
-    // ----------------------------------------------------
-    // INITIALIZE METHANE (CH4) CHART
-    // ----------------------------------------------------
+    // CH4 Chart
     const ch4Ctx = document.getElementById('ch4Chart').getContext('2d');
     const ch4Gradient = ch4Ctx.createLinearGradient(0, 0, 0, 300);
     ch4Gradient.addColorStop(0, 'rgba(255, 153, 0, 0.35)');
@@ -469,19 +463,14 @@
       options: commonChartOptions
     });
 
-    // ----------------------------------------------------
-    // FUNCTION TO UPDATE DASHBOARD VALUES AND CHARTS
-    // ----------------------------------------------------
     function updateDashboard(data) {
-      const now = new Date().toLocaleTimeString();
+      const now = new Date(data.timestamp || Date.now()).toLocaleTimeString();
 
-      // 1. Update text displays for metrics
       document.getElementById('nh3Val').innerText = data.nh3.toFixed(1);
       document.getElementById('ch4Val').innerText = data.ch4.toFixed(1);
       document.getElementById('rssiVal').innerText = data.rssi.toFixed(1);
       document.getElementById('snrVal').innerText = (data.snr > 0 ? '+' : '') + data.snr.toFixed(1);
 
-      // 2. Compute peak values
       if (data.nh3 > nh3Peak) {
         nh3Peak = data.nh3;
         document.getElementById('nh3Peak').innerText = `Peak: ${nh3Peak.toFixed(1)}`;
@@ -491,7 +480,7 @@
         document.getElementById('ch4Peak').innerText = `Peak: ${ch4Peak.toFixed(1)}`;
       }
 
-      // 3. Dynamic Threshold Warnings for Ammonia
+      // Ammonia Alert Badges
       const nh3Badge = document.getElementById('nh3Badge');
       if (data.nh3 > 25.0) {
         nh3Badge.className = 'badge badge-danger';
@@ -504,7 +493,7 @@
         nh3Badge.innerText = 'SAFE';
       }
 
-      // 4. Dynamic Threshold Warnings for Methane
+      // Methane Alert Badges
       const ch4Badge = document.getElementById('ch4Badge');
       if (data.ch4 > 1000.0) {
         ch4Badge.className = 'badge badge-danger';
@@ -517,20 +506,16 @@
         ch4Badge.innerText = 'SAFE';
       }
 
-      // 5. Append new points to both line charts
       appendDataPoint(nh3Chart, now, data.nh3);
       appendDataPoint(ch4Chart, now, data.ch4);
 
-      // 6. Update bottom timestamp
       document.getElementById('lastUpdated').innerText = `Last updated: ${now}`;
     }
 
-    // Function to add a point to a Chart.js instance and slide window
     function appendDataPoint(chart, label, value) {
       chart.data.labels.push(label);
       chart.data.datasets[0].data.push(value);
 
-      // Shift off old data points to keep the chart rolling cleanly
       if (chart.data.labels.length > MAX_POINTS) {
         chart.data.labels.shift();
         chart.data.datasets[0].data.shift();
@@ -538,9 +523,31 @@
       chart.update();
     }
 
-// ----------------------------------------------------
-    // LIVE BACKEND TELEMETRY FETCHER
-    // Polls your live Render backend every 3 seconds
+    // ----------------------------------------------------
+    // PRE-LOAD SAVED HISTORY INTO CHARTS
+    // ----------------------------------------------------
+    async function loadHistory() {
+      try {
+        const res = await fetch('/api/telemetry/history');
+        if (!res.ok) return;
+        const history = await res.json();
+        
+        history.forEach(item => {
+          const time = new Date(item.timestamp).toLocaleTimeString();
+          appendDataPoint(nh3Chart, time, item.nh3);
+          appendDataPoint(ch4Chart, time, item.ch4);
+        });
+
+        if (history.length > 0) {
+          updateDashboard(history[history.length - 1]);
+        }
+      } catch (e) {
+        console.warn('Could not load history', e);
+      }
+    }
+
+    // ----------------------------------------------------
+    // LIVE TELEMETRY POLLING
     // ----------------------------------------------------
     let lastProcessedTimestamp = null;
 
@@ -551,7 +558,6 @@
         
         const data = await response.json();
 
-        // Only update if fresh data has arrived
         if (data.timestamp && data.timestamp !== lastProcessedTimestamp) {
           lastProcessedTimestamp = data.timestamp;
           updateDashboard(data);
@@ -567,9 +573,11 @@
       }
     }
 
-    // Poll your Render API every 3 seconds
-    setInterval(fetchLiveTelemetry, 3000);
-    fetchLiveTelemetry(); // Initial immediate call
+    // First load previous database points, then start live polling
+    loadHistory().then(() => {
+      setInterval(fetchLiveTelemetry, 3000);
+      fetchLiveTelemetry();
+    });
   </script>
 </body>
 </html>
