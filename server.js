@@ -94,7 +94,6 @@ app.get('/api/telemetry/export-csv', async (req, res) => {
     res.status(500).send('Error generating CSV export');
   }
 });
-});
 
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
