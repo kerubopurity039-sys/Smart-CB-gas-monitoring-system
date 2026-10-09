@@ -538,20 +538,38 @@
       chart.update();
     }
 
+// ----------------------------------------------------
+    // LIVE BACKEND TELEMETRY FETCHER
+    // Polls your live Render backend every 3 seconds
     // ----------------------------------------------------
-    // PREVIEW / SIMULATION LOOP
-    // Generates realistic fluctuating values every 3 seconds
-    // (When connecting to real ESP32 backend later, replace this with fetch())
-    // ----------------------------------------------------
-    setInterval(() => {
-      const mockTelemetry = {
-        nh3: +(8.0 + Math.random() * 8.5).toFixed(2),
-        ch4: +(220.0 + Math.random() * 80.0).toFixed(2),
-        rssi: +(-75.0 - Math.random() * 12.0).toFixed(1),
-        snr: +(7.5 + Math.random() * 2.0).toFixed(1)
-      };
-      updateDashboard(mockTelemetry);
-    }, 3000);
+    let lastProcessedTimestamp = null;
+
+    async function fetchLiveTelemetry() {
+      try {
+        const response = await fetch('/api/telemetry/latest');
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        
+        const data = await response.json();
+
+        // Only update if fresh data has arrived
+        if (data.timestamp && data.timestamp !== lastProcessedTimestamp) {
+          lastProcessedTimestamp = data.timestamp;
+          updateDashboard(data);
+          
+          const statusElem = document.getElementById('gatewayStatus');
+          statusElem.innerText = 'GATEWAY LIVE';
+          statusElem.parentElement.style.color = '#2ed573';
+        }
+      } catch (err) {
+        console.warn('Backend link waiting...', err);
+        const statusElem = document.getElementById('gatewayStatus');
+        statusElem.innerText = 'CONNECTING...';
+      }
+    }
+
+    // Poll your Render API every 3 seconds
+    setInterval(fetchLiveTelemetry, 3000);
+    fetchLiveTelemetry(); // Initial immediate call
   </script>
 </body>
 </html>
