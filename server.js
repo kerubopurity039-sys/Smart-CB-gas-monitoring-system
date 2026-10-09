@@ -67,28 +67,33 @@ app.get('/api/telemetry/history', async (req, res) => {
 });
 
 // 4. CSV Export Endpoint: Generates a downloadable CSV spreadsheet
+// 4. CSV Export Endpoint: Splits Date and Time into separate columns
 app.get('/api/telemetry/export-csv', async (req, res) => {
   try {
     const docs = await db.find({}).sort({ timestamp: 1 });
     
-    let csv = 'Timestamp,Ammonia_NH3_ppm,Methane_CH4_ppm,LoRa_RSSI_dBm,LoRa_SNR_dB\r\n';
+    // Updated CSV header with Date and Time split
+    let csv = 'Date,Time,Ammonia_NH3_ppm,Methane_CH4_ppm,LoRa_RSSI_dBm,LoRa_SNR_dB\r\n';
+
     docs.forEach(row => {
-      csv += `"${row.timestamp}",${row.nh3},${row.ch4},${row.rssi},${row.snr}\r\n`;
+      const dt = new Date(row.timestamp);
+
+      // Extract Date (YYYY-MM-DD)
+      const dateStr = dt.toISOString().split('T')[0];
+
+      // Extract Time (HH:MM:SS in 24-hr format)
+      const timeStr = dt.toTimeString().split(' ')[0];
+
+      csv += `"${dateStr}","${timeStr}",${row.nh3},${row.ch4},${row.rssi},${row.snr}\r\n`;
     });
 
     res.header('Content-Type', 'text/csv');
-    res.attachment(`telemetry_export_${Date.now()}.csv`);
+    res.attachment(`latrine_gas_telemetry_${Date.now()}.csv`);
     return res.send(csv);
   } catch (err) {
     res.status(500).send('Error generating CSV export');
   }
 });
-
-// Serve frontend static files
-app.use(express.static(path.join(__dirname, '.')));
-
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.listen(PORT, () => {
