@@ -1,13 +1,14 @@
 {
   "name": "gas-telemetry-server",
   "version": "1.0.0",
-  "description": "Backend API for Heltec LoRa gas monitoring telemetry",
+  "description": "Backend API for Heltec LoRa gas monitoring telemetry with persistent storage",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "nedb-promises": "^6.2.3"
   }
 }
