@@ -40,7 +40,6 @@ app.post('/api/telemetry', async (req, res) => {
   latestTelemetry = record;
 
   try {
-    // Insert into persistent database
     await db.insert(record);
     console.log('Saved to DB:', record);
     return res.status(200).json({ status: 'success', received: record });
@@ -58,7 +57,6 @@ app.get('/api/telemetry/latest', (req, res) => {
 // 3. Endpoint to fetch historical data for charts
 app.get('/api/telemetry/history', async (req, res) => {
   try {
-    // Retrieve the latest 100 readings sorted chronologically
     const history = await db.find({}).sort({ timestamp: -1 }).limit(100);
     res.json(history.reverse());
   } catch (err) {
@@ -67,21 +65,15 @@ app.get('/api/telemetry/history', async (req, res) => {
 });
 
 // 4. CSV Export Endpoint: Generates a downloadable CSV spreadsheet
-// 4. CSV Export Endpoint: Splits Date and Time into separate columns
 app.get('/api/telemetry/export-csv', async (req, res) => {
   try {
     const docs = await db.find({}).sort({ timestamp: 1 });
-    
-    // Updated CSV header with Date and Time split
+
     let csv = 'Date,Time,Ammonia_NH3_ppm,Methane_CH4_ppm,LoRa_RSSI_dBm,LoRa_SNR_dB\r\n';
 
     docs.forEach(row => {
       const dt = new Date(row.timestamp);
-
-      // Extract Date (YYYY-MM-DD)
       const dateStr = dt.toISOString().split('T')[0];
-
-      // Extract Time (HH:MM:SS in 24-hr format)
       const timeStr = dt.toTimeString().split(' ')[0];
 
       csv += `"${dateStr}","${timeStr}",${row.nh3},${row.ch4},${row.rssi},${row.snr}\r\n`;
@@ -93,6 +85,13 @@ app.get('/api/telemetry/export-csv', async (req, res) => {
   } catch (err) {
     res.status(500).send('Error generating CSV export');
   }
+});
+
+// 5. Serve frontend files (including index.html)
+app.use(express.static(path.join(__dirname, '.')));
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.listen(PORT, () => {
